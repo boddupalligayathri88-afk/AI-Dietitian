@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}Daily Tracker – AI Dietitian{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">📊 Daily Tracker</h1>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Log today's meals, water, exercise, sleep & mood</p>
+        </div>
+        {% if streak > 0 %}
+        <div class="text-center bg-gradient-to-br from-orange-400 to-red-500 text-white rounded-2xl px-4 py-2">
+            <p class="text-2xl font-bold">🔥 {{ streak }}</p>
+            <p class="text-xs">Day Streak</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Today's Log Form -->
+    <form method="POST" action="/progress" id="tracker-form">
+        <input type="hidden" name="log_date" value="{{ today }}">
+        <input type="hidden" name="meals_json" id="meals-json-input" value="[]">
+
+        <!-- Water Intake Card -->
+        <div class="card mb-4">
+            <h2 class="font-bold text-gray-800 dark:text-white mb-1">💧 Water Intake</h2>
+            <p class="text-xs text-gray-400 mb-3">Each glass = 250ml. Tap to fill.</p>
+
+            <!-- Water glasses visualizer -->
+            <div class="flex flex-wrap gap-2 mb-3" id="water-glasses">
+                {% for i in range(1, 13) %}
+                <div class="water-glass {{ 'filled' if today_log and today_log.water_ml >= i * 250 else '' }}"
+                     onclick="toggleWater({{ i }})" title="{{ i * 250 }}ml">
+                    <span class="absolute inset-0 flex items-center justify-center text-xs font-bold z-10"
+                          style="{{ 'color:white' if today_log and today_log.water_ml >= i * 250 else 'color:#3b82f6' }}">{{ i }}</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="flex-1">
+                    <input type="number" name="water_ml" id="water-ml-input" class="form-input"
+                           placeholder="0" min="0" max="5000" step="50"
+                           value="{{ today_log.water_ml or 0 }}"
+                           oninput="syncWaterGlasses()">
+                </div>
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">ml</span>
+                <span class="text-sm text-blue-600 dark:text-blue-400 font-bold" id="water-liters">
+                    ({{ '%.1f'|format((today_log.water_ml or 0) / 1000) }}L)
+                </span>
+            </div>
+        </div>
+
+        <!-- Mood Tracker -->
+        <div class="card mb-4">
+            <h2 class="font-bold text-gray-800 dark:text-white mb-3">😊 How Are You Feeling Today?</h2>
+            <input type="hidden" name="mood" id="mood-input" value="{{ today_log.mood or 3 }}">
+            <div class="flex justify-center gap-3">
+                {% for i, emoji, label in [(1,'😢','Bad'), (2,'😕','Low'), (3,'😐','Okay'), (4,'😊','Good'), (5,'😄','Great')] %}
+                <button type="button" onclick="setMood({{ i }})"
+                        class="mood-btn {{ 'selected' if (today_log.mood or 3) == i else '' }}"
+                        id="mood-{{ i }}" title="{{ label }}">
+                    {{ emoji }}
+                    <div class="text-xs mt-1 font-medium text-gray-500 dark:text-gray-400">{{ label }}</div>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Exercise & Sleep -->
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="card">
+                <h2 class="font-bold text-gray-800 dark:text-white mb-3">🏃 Exercise</h2>
+                <div class="relative">
+                    <input type="number" name="exercise_min" class="form-input" placeholder="0"
+                           min="0" max="600" value="{{ today_log.exercise_min or 0 }}">
+                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">min</span>
+                </div>
+                <div class="mt-2 space-y-1">
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill bg-orange-400"
+                             style="width: {{ [((today_log.exercise_min or 0) / 60 * 100), 100]|min }}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-400 text-right">Goal: 60 min</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="font-bold text-gray-800 dark:text-white mb-3">😴 Sleep</h2>
+                <div class="relative">
+                    <input type="number" name="sleep_hours" class="form-input" placeholder="7" step="0.5"
+                           min="0" max="12" value="{{ today_log.sleep_hours or 0 }}">
+                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">hrs</span>
+                </div>
+                <div class="mt-2 space-y-1">
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill bg-indigo-400"
+                             style="width: {{ [((today_log.sleep_hours or 0) / 8 * 100), 100]|min }}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-400 text-right">Goal: 8 hrs</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meals Logged -->
+        <div class="card mb-4">
+            <h2 class="font-bold text-gray-800 dark:text-white mb-3">🍱 Meals Logged</h2>
+            <div id="meals-list" class="space-y-2 mb-3">
+                <!-- Meals added dynamically -->
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="meal-input" class="form-input"
+                       placeholder="Enter a meal (e.g. 'Oats with banana')">
+                <button type="button" onclick="addMeal()" class="btn-secondary shrink-0">+ Add</button>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="card mb-6">
+            <label class="form-label">📝 Notes (optional)</label>
+            <textarea name="notes" class="form-input resize-none" rows="2"
+                      placeholder="How was your day? Any challenges?">{{ today_log.notes or '' }}</textarea>
+        </div>
+
+        <!-- Save Button -->
+        <button type="submit" class="btn-primary w-full justify-center py-3 text-base">
+            💾 Save Today's Log
+        </button>
+
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ---- Water Glasses ----
+let waterMl = {{ today_log.water_ml or 0 }};
+
+function toggleWater(glassNum) {
+    const newMl = glassNum * 250;
+    // If clicking same glass, reset to one below
+    waterMl = (waterMl === newMl) ? (glassNum - 1) * 250 : newMl;
+    document.getElementById('water-ml-input').value = waterMl;
+    updateWaterDisplay();
+}
+
+function syncWaterGlasses() {
+    waterMl = parseInt(document.getElementById('water-ml-input').value) || 0;
+    updateWaterDisplay();
+}
+
+function updateWaterDisplay() {
+    document.querySelectorAll('.water-glass').forEach((glass, i) => {
+        const glassNum = i + 1;
+        if (waterMl >= glassNum * 250) {
+            glass.classList.add('filled');
+            glass.querySelector('span').style.color = 'white';
+        } else {
+            glass.classList.remove('filled');
+            glass.querySelector('span').style.color = '#3b82f6';
+        }
+    });
+    document.getElementById('water-liters').textContent =
+        `(${(waterMl / 1000).toFixed(1)}L)`;
+}
+
+// ---- Mood ----
+function setMood(val) {
+    document.getElementById('mood-input').value = val;
+    document.querySelectorAll('.mood-btn').forEach((btn, i) => {
+        btn.classList.toggle('selected', i + 1 === val);
+    });
+}
+
+// ---- Meals ----
+let meals = [];
+
+function addMeal() {
+    const input = document.getElementById('meal-input');
+    const meal = input.value.trim();
+    if (!meal) return;
+    meals.push(meal);
+    renderMeals();
+    input.value = '';
+    document.getElementById('meals-json-input').value = JSON.stringify(meals);
+}
+
+function removeMeal(i) {
+    meals.splice(i, 1);
+    renderMeals();
+    document.getElementById('meals-json-input').value = JSON.stringify(meals);
+}
+
+function renderMeals() {
+    const list = document.getElementById('meals-list');
+    if (meals.length === 0) {
+        list.innerHTML = '<p class="text-sm text-gray-400 italic">No meals added yet.</p>';
+        return;
+    }
+    list.innerHTML = meals.map((m, i) => `
+        <div class="flex items-center justify-between bg-green-50 dark:bg-green-900/20 rounded-xl px-3 py-2">
+            <span class="text-sm text-gray-700 dark:text-gray-300">🍽️ ${m}</span>
+            <button type="button" onclick="removeMeal(${i})" class="text-red-400 hover:text-red-600 text-lg ml-2">×</button>
+        </div>
+    `).join('');
+}
+
+// Load existing meals from today's log
+{% if today_log and today_log.meals_json %}
+try {
+    meals = JSON.parse('{{ today_log.meals_json | replace("'", "\\'") }}') || [];
+} catch(e) { meals = []; }
+renderMeals();
+document.getElementById('meals-json-input').value = JSON.stringify(meals);
+{% else %}
+renderMeals();
+{% endif %}
+
+// Allow Enter key to add meal
+document.getElementById('meal-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); addMeal(); }
+});
+</script>
+{% endblock %}

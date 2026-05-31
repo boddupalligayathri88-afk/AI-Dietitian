@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Health Profile – AI Dietitian{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <div class="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg mb-4">
+            <span class="text-3xl">📋</span>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Your Health Profile</h1>
+        <p class="text-gray-500 dark:text-gray-400 mt-1 text-sm">This helps us personalize your diet plan. All data stays private.</p>
+    </div>
+
+    <!-- Profile Form -->
+    <form method="POST" action="/profile" class="space-y-6">
+
+        <!-- Section 1: Personal Info -->
+        <div class="card">
+            <h2 class="font-bold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
+                <span class="w-7 h-7 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center text-sm">1</span>
+                Personal Information
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="sm:col-span-2">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" name="name" class="form-input" placeholder="Your full name"
+                           value="{{ profile.name or '' }}" required>
+                </div>
+                <div>
+                    <label class="form-label">Age (years)</label>
+                    <input type="number" name="age" class="form-input" placeholder="25" min="10" max="100"
+                           value="{{ profile.age or '' }}" required>
+                </div>
+                <div>
+                    <label class="form-label">Gender</label>
+                    <select name="gender" class="form-input">
+                        <option value="male" {{ 'selected' if profile.gender == 'male' else '' }}>Male</option>
+                        <option value="female" {{ 'selected' if profile.gender == 'female' else '' }}>Female</option>
+                        <option value="other" {{ 'selected' if profile.gender == 'other' else '' }}>Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Height (cm)</label>
+                    <input type="number" name="height_cm" class="form-input" placeholder="170" min="100" max="250" step="0.1"
+                           value="{{ profile.height_cm or '' }}" required>
+                </div>
+                <div>
+                    <label class="form-label">Weight (kg)</label>
+                    <input type="number" name="weight_kg" class="form-input" placeholder="70" min="20" max="300" step="0.1"
+                           value="{{ profile.weight_kg or '' }}" required>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Health Conditions -->
+        <div class="card">
+            <h2 class="font-bold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
+                <span class="w-7 h-7 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center text-sm">2</span>
+                Health Conditions
+            </h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="form-label">Diseases / Medical Conditions</label>
+                    <p class="text-xs text-gray-400 mb-2">Select all that apply (check boxes). AI will adapt the diet accordingly.</p>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="diseases-checkboxes">
+                        {% set disease_list = (profile.diseases or '').split(',') %}
+                        {% for d in ['diabetes', 'hypertension', 'thyroid', 'obesity', 'pcod', 'kidney', 'anemia', 'none'] %}
+                        <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
+                            <input type="checkbox" name="disease_{{ d }}" value="{{ d }}"
+                                   {{ 'checked' if d in disease_list else '' }}
+                                   class="w-4 h-4 text-green-600 rounded disease-check"
+                                   onchange="updateDiseases()">
+                            <span class="text-sm capitalize text-gray-700 dark:text-gray-300">{{ d }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="diseases" id="diseases-input" value="{{ profile.diseases or '' }}">
+                </div>
+                <div>
+                    <label class="form-label">Allergies</label>
+                    <input type="text" name="allergies" class="form-input" placeholder="e.g. peanuts, gluten, lactose"
+                           value="{{ profile.allergies or '' }}">
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Diet Preferences -->
+        <div class="card">
+            <h2 class="font-bold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
+                <span class="w-7 h-7 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center text-sm">3</span>
+                Diet Preferences
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="form-label">Food Preference</label>
+                    <select name="food_preferences" class="form-input">
+                        <option value="veg" {{ 'selected' if profile.food_preferences == 'veg' else '' }}>🥦 Vegetarian</option>
+                        <option value="non_veg" {{ 'selected' if profile.food_preferences == 'non_veg' else '' }}>🍗 Non-Vegetarian</option>
+                        <option value="vegan" {{ 'selected' if profile.food_preferences == 'vegan' else '' }}>🌱 Vegan</option>
+                        <option value="eggetarian" {{ 'selected' if profile.food_preferences == 'eggetarian' else '' }}>🥚 Eggetarian</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Budget per Day</label>
+                    <select name="budget" class="form-input">
+                        <option value="low" {{ 'selected' if profile.budget == 'low' else '' }}>💵 Low (under ₹500)</option>
+                        <option value="medium" {{ 'selected' if profile.budget == 'medium' else '' }}>💰 Medium (₹500–1000)</option>
+                        <option value="high" {{ 'selected' if profile.budget == 'high' else '' }}>💎 High (above ₹1000)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Regional Cuisine</label>
+                    <select name="region" class="form-input">
+                        <option value="north" {{ 'selected' if profile.region == 'north' else '' }}>🌾 North Indian</option>
+                        <option value="south" {{ 'selected' if profile.region == 'south' else '' }}>🍚 South Indian</option>
+                        <option value="east" {{ 'selected' if profile.region == 'east' else '' }}>🐟 East Indian</option>
+                        <option value="west" {{ 'selected' if profile.region == 'west' else '' }}>🌶️ West Indian</option>
+                        <option value="central" {{ 'selected' if profile.region == 'central' else '' }}>🫓 Central Indian</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Fitness Goal</label>
+                    <select name="fitness_goals" class="form-input">
+                        <option value="weight_loss" {{ 'selected' if profile.fitness_goals == 'weight_loss' else '' }}>⬇️ Weight Loss</option>
+                        <option value="muscle_gain" {{ 'selected' if profile.fitness_goals == 'muscle_gain' else '' }}>💪 Muscle Gain</option>
+                        <option value="maintenance" {{ 'selected' if profile.fitness_goals == 'maintenance' else '' }}>⚖️ Maintenance</option>
+                        <option value="improve_health" {{ 'selected' if profile.fitness_goals == 'improve_health' else '' }}>❤️ Improve Health</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Lifestyle -->
+        <div class="card">
+            <h2 class="font-bold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
+                <span class="w-7 h-7 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center text-sm">4</span>
+                Lifestyle Habits
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="form-label">Activity Level</label>
+                    <select name="activity_level" class="form-input">
+                        <option value="sedentary" {{ 'selected' if profile.activity_level == 'sedentary' else '' }}>🛋️ Sedentary (desk job)</option>
+                        <option value="light" {{ 'selected' if profile.activity_level == 'light' else '' }}>🚶 Light (1-3 days/wk)</option>
+                        <option value="moderate" {{ 'selected' if profile.activity_level == 'moderate' else '' }}>🏃 Moderate (3-5 days/wk)</option>
+                        <option value="active" {{ 'selected' if profile.activity_level == 'active' else '' }}>💪 Active (6-7 days/wk)</option>
+                        <option value="very_active" {{ 'selected' if profile.activity_level == 'very_active' else '' }}>🏋️ Very Active (athlete)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Daily Sleep Hours</label>
+                    <input type="number" name="sleep_hours" class="form-input" placeholder="7" min="3" max="12" step="0.5"
+                           value="{{ profile.sleep_hours or 7 }}">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="form-label">Daily Water Intake</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        {% for val, label in [('less_than_2L', '< 2 Litres'), ('2_to_3L', '2–3 Litres'), ('more_than_3L', '> 3 Litres')] %}
+                        <label class="water-option flex items-center justify-center gap-1 p-3 rounded-xl border-2 cursor-pointer text-sm font-medium transition-all
+                                     {{ 'border-blue-400 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' if profile.water_habit == val else 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400' }}">
+                            <input type="radio" name="water_habit" value="{{ val }}" class="hidden"
+                                   {{ 'checked' if profile.water_habit == val else '' }}
+                                   onchange="highlightWater(this)">
+                            💧 {{ label }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex gap-3">
+            <button type="submit" class="btn-primary flex-1 justify-center py-3 text-base">
+                💾 Save Profile & Continue
+            </button>
+            {% if profile %}
+            <a href="/dashboard" class="btn-secondary px-6">Cancel</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateDiseases() {
+    const checked = Array.from(document.querySelectorAll('.disease-check:checked'))
+        .map(cb => cb.value)
+        .filter(v => v !== 'none');
+    document.getElementById('diseases-input').value = checked.join(',');
+}
+
+function highlightWater(radio) {
+    document.querySelectorAll('.water-option').forEach(el => {
+        el.className = el.className.replace(/border-blue-400[\w\s\/:-]*/g, '').trim();
+        el.classList.add('border-gray-200', 'dark:border-gray-600', 'text-gray-600', 'dark:text-gray-400');
+    });
+    const parent = radio.closest('.water-option');
+    parent.classList.remove('border-gray-200', 'dark:border-gray-600', 'text-gray-600', 'dark:text-gray-400');
+    parent.classList.add('border-blue-400', 'bg-blue-50', 'text-blue-700');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Dietitian{% endblock %}</title>
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0',
+                            300: '#86efac', 400: '#4ade80', 500: '#22c55e',
+                            600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d'
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.4s ease-out',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideUp: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="/static/css/custom.css">
+
+    {% block head %}{% endblock %}
+</head>
+<body class="h-full bg-gray-50 dark:bg-gray-900 transition-colors duration-300" id="app-body">
+
+    <!-- Navigation Bar -->
+    <nav class="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+
+                <!-- Logo & Brand -->
+                <a href="/dashboard" class="flex items-center space-x-2 group">
+                    <div class="w-9 h-9 bg-gradient-to-br from-green-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                        <span class="text-white font-bold text-lg">🥗</span>
+                    </div>
+                    <span class="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">AI Dietitian</span>
+                </a>
+
+                <!-- Desktop Nav Links -->
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="/dashboard" class="nav-link {% if request.url.path == '/dashboard' %}nav-active{% endif %}">
+                        🏠 Dashboard
+                    </a>
+                    <a href="/diet-plan" class="nav-link {% if '/diet-plan' in request.url.path %}nav-active{% endif %}">
+                        🍽️ Diet Plan
+                    </a>
+                    <a href="/tracker" class="nav-link {% if request.url.path == '/tracker' %}nav-active{% endif %}">
+                        📊 Tracker
+                    </a>
+                    <a href="/progress" class="nav-link {% if request.url.path == '/progress' %}nav-active{% endif %}">
+                        📈 Progress
+                    </a>
+                    <a href="/chatbot" class="nav-link {% if request.url.path == '/chatbot' %}nav-active{% endif %}">
+                        🤖 AI Chat
+                    </a>
+                    <a href="/profile" class="nav-link {% if request.url.path == '/profile' %}nav-active{% endif %}">
+                        👤 Profile
+                    </a>
+                </div>
+
+                <!-- Right Side: Dark Mode + User -->
+                <div class="flex items-center space-x-3">
+                    <!-- Dark Mode Toggle -->
+                    <button onclick="toggleDarkMode()" class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Toggle dark mode">
+                        <span id="dark-icon" class="text-xl">🌙</span>
+                    </button>
+
+                    <!-- User Menu -->
+                    {% if username %}
+                    <div class="relative" id="user-menu-container">
+                        <button onclick="toggleUserMenu()" class="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1.5 rounded-full text-sm font-medium hover:shadow-lg transition-all">
+                            <span>👤</span>
+                            <span class="hidden sm:block">{{ username }}</span>
+                            <span>▾</span>
+                        </button>
+                        <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                            <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">⚙️ Profile</a>
+                            <a href="/logout" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">🚪 Logout</a>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Mobile Menu Button -->
+                    <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+            <div class="px-4 py-3 space-y-1">
+                <a href="/dashboard" class="mobile-nav-link">🏠 Dashboard</a>
+                <a href="/diet-plan" class="mobile-nav-link">🍽️ Diet Plan</a>
+                <a href="/tracker" class="mobile-nav-link">📊 Tracker</a>
+                <a href="/progress" class="mobile-nav-link">📈 Progress</a>
+                <a href="/chatbot" class="mobile-nav-link">🤖 AI Chat</a>
+                <a href="/profile" class="mobile-nav-link">👤 Profile</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-fade-in">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-12 border-t border-gray-200 dark:border-gray-700 py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
+            <p>🥗 AI Dietitian &mdash; Your Personal Nutrition Assistant &mdash; Powered by Groq AI</p>
+        </div>
+    </footer>
+
+    <!-- Global JavaScript -->
+    <script>
+        // Dark Mode Management
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const isDark = html.classList.toggle('dark');
+            localStorage.setItem('darkMode', isDark ? 'true' : 'false');
+            document.getElementById('dark-icon').textContent = isDark ? '☀️' : '🌙';
+        }
+
+        // Load saved dark mode preference on page load
+        (function() {
+            const saved = localStorage.getItem('darkMode');
+            if (saved === 'true' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                const icon = document.getElementById('dark-icon');
+                if (icon) icon.textContent = '☀️';
+            }
+        })();
+
+        // User Dropdown Menu
+        function toggleUserMenu() {
+            document.getElementById('user-dropdown').classList.toggle('hidden');
+        }
+
+        // Mobile Navigation Menu
+        function toggleMobileMenu() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const container = document.getElementById('user-menu-container');
+            if (container && !container.contains(e.target)) {
+                const dropdown = document.getElementById('user-dropdown');
+                if (dropdown) dropdown.classList.add('hidden');
+            }
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Dietitian – Sign In</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+        // Apply saved dark mode preference
+        if (localStorage.getItem('darkMode') === 'true' ||
+            (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+    <link rel="stylesheet" href="/static/css/custom.css">
+</head>
+<body class="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+
+    <!-- Dark Mode Button -->
+    <button onclick="toggleDarkMode()" class="fixed top-4 right-4 p-2 rounded-full bg-white dark:bg-gray-700 shadow-md text-xl z-50">
+        <span id="dark-icon">🌙</span>
+    </button>
+
+    <div class="w-full max-w-md animate-fade-in">
+        <!-- Hero Section -->
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-xl mb-4">
+                <span class="text-4xl">🥗</span>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-white">AI Dietitian</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-1">Your personalized Indian nutrition assistant</p>
+        </div>
+
+        <!-- Auth Card -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+
+            <!-- Tabs -->
+            <div class="flex border-b border-gray-100 dark:border-gray-700">
+                <button onclick="showTab('login')" id="tab-login"
+                    class="flex-1 py-4 text-sm font-semibold transition-colors tab-active-btn">
+                    🔑 Sign In
+                </button>
+                <button onclick="showTab('register')" id="tab-register"
+                    class="flex-1 py-4 text-sm font-semibold transition-colors tab-inactive-btn">
+                    ✨ Register
+                </button>
+            </div>
+
+            <div class="p-6">
+
+                <!-- Error Alert -->
+                {% if error %}
+                <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl text-sm flex items-center gap-2">
+                    <span>⚠️</span> {{ error }}
+                </div>
+                {% endif %}
+
+                <!-- Login Form -->
+                <form id="login-form" method="POST" action="/login" class="space-y-4">
+                    <div>
+                        <label class="form-label">Username</label>
+                        <input type="text" name="username" class="form-input" placeholder="Enter your username" required autocomplete="username">
+                    </div>
+                    <div>
+                        <label class="form-label">Password</label>
+                        <input type="password" name="password" class="form-input" placeholder="Enter your password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn-primary w-full justify-center text-base py-3">
+                        🔑 Sign In
+                    </button>
+                </form>
+
+                <!-- Register Form -->
+                <form id="register-form" method="POST" action="/register" class="space-y-4 hidden">
+                    <div>
+                        <label class="form-label">Username</label>
+                        <input type="text" name="username" class="form-input" placeholder="Choose a username" required autocomplete="username">
+                    </div>
+                    <div>
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-input" placeholder="Your email address" required autocomplete="email">
+                    </div>
+                    <div>
+                        <label class="form-label">Password</label>
+                        <input type="password" name="password" class="form-input" placeholder="Create a password (min 6 chars)" required autocomplete="new-password">
+                    </div>
+                    <div>
+                        <label class="form-label">Confirm Password</label>
+                        <input type="password" name="confirm_password" class="form-input" placeholder="Repeat your password" required autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn-primary w-full justify-center text-base py-3">
+                        ✨ Create Account
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Features Preview -->
+        <div class="mt-6 grid grid-cols-3 gap-3 text-center">
+            <div class="bg-white/70 dark:bg-gray-800/70 rounded-xl p-3 backdrop-blur-sm">
+                <div class="text-2xl mb-1">🤖</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400 font-medium">AI Diet Plans</div>
+            </div>
+            <div class="bg-white/70 dark:bg-gray-800/70 rounded-xl p-3 backdrop-blur-sm">
+                <div class="text-2xl mb-1">📊</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400 font-medium">Progress Tracking</div>
+            </div>
+            <div class="bg-white/70 dark:bg-gray-800/70 rounded-xl p-3 backdrop-blur-sm">
+                <div class="text-2xl mb-1">🏅</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400 font-medium">Badges & Goals</div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .tab-active-btn { color: #16a34a; border-bottom: 3px solid #16a34a; }
+        .tab-inactive-btn { color: #9ca3af; }
+        .dark .tab-inactive-btn { color: #6b7280; }
+        @keyframes fadeIn { from { opacity:0; transform: translateY(15px); } to { opacity:1; transform:translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+    </style>
+
+    <script>
+        // Tab switching
+        const tab = '{{ tab|default("login") }}';
+
+        function showTab(name) {
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            const tabLogin = document.getElementById('tab-login');
+            const tabRegister = document.getElementById('tab-register');
+
+            if (name === 'login') {
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+                tabLogin.className = 'flex-1 py-4 text-sm font-semibold transition-colors tab-active-btn';
+                tabRegister.className = 'flex-1 py-4 text-sm font-semibold transition-colors tab-inactive-btn';
+            } else {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+                tabLogin.className = 'flex-1 py-4 text-sm font-semibold transition-colors tab-inactive-btn';
+                tabRegister.className = 'flex-1 py-4 text-sm font-semibold transition-colors tab-active-btn';
+            }
+        }
+
+        // Show correct tab on page load
+        showTab(tab);
+
+        // Dark mode
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('darkMode', isDark);
+            document.getElementById('dark-icon').textContent = isDark ? '☀️' : '🌙';
+        }
+        // Sync icon on load
+        document.getElementById('dark-icon').textContent =
+            document.documentElement.classList.contains('dark') ? '☀️' : '🌙';
+    </script>
+</body>
+</html>

@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – AI Dietitian{% endblock %}
+
+{% block content %}
+<!-- Welcome Header -->
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+        👋 Welcome back, <span class="gradient-text">{{ username }}</span>!
+    </h1>
+    <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Here's your health overview for today.</p>
+</div>
+
+{% if not has_profile %}
+<!-- Onboarding Prompt -->
+<div class="card border-l-4 border-green-400 bg-green-50 dark:bg-green-900/20 mb-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="font-bold text-green-800 dark:text-green-300">Complete Your Health Profile</h3>
+            <p class="text-sm text-green-700 dark:text-green-400 mt-1">Set up your profile to get personalized diet plans and health metrics.</p>
+        </div>
+        <a href="/onboarding" class="btn-primary text-sm">Get Started →</a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Stats Row: 4 Key Metrics -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+    <!-- BMI Card -->
+    <div class="gradient-card-green animate-slide-up">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-green-100 text-xs font-medium uppercase tracking-wide">BMI</p>
+                <p class="text-3xl font-bold mt-1">{{ bmi_data.bmi if bmi_data else '–' }}</p>
+                <p class="text-green-100 text-sm mt-0.5">{{ bmi_data.category if bmi_data else 'No profile' }}</p>
+            </div>
+            <span class="text-3xl opacity-80">⚖️</span>
+        </div>
+    </div>
+
+    <!-- Daily Calories Card -->
+    <div class="gradient-card-blue animate-slide-up" style="animation-delay:0.1s">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-blue-100 text-xs font-medium uppercase tracking-wide">Daily Calories</p>
+                <p class="text-3xl font-bold mt-1">{{ bmi_data.daily_calories|int if bmi_data else '–' }}</p>
+                <p class="text-blue-100 text-sm mt-0.5">kcal needed</p>
+            </div>
+            <span class="text-3xl opacity-80">🔥</span>
+        </div>
+    </div>
+
+    <!-- Health Score Card -->
+    <div class="gradient-card-purple animate-slide-up" style="animation-delay:0.2s">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-purple-100 text-xs font-medium uppercase tracking-wide">Health Score</p>
+                <p class="text-3xl font-bold mt-1">{{ bmi_data.health_score if bmi_data else '–' }}<span class="text-base">/100</span></p>
+                <p class="text-purple-100 text-sm mt-0.5">
+                    {% if bmi_data %}
+                        {% if bmi_data.health_score >= 75 %}Excellent{% elif bmi_data.health_score >= 50 %}Good{% else %}Needs Work{% endif %}
+                    {% else %}No profile{% endif %}
+                </p>
+            </div>
+            <span class="text-3xl opacity-80">💚</span>
+        </div>
+    </div>
+
+    <!-- Plans Generated Card -->
+    <div class="gradient-card-orange animate-slide-up" style="animation-delay:0.3s">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-orange-100 text-xs font-medium uppercase tracking-wide">Diet Plans</p>
+                <p class="text-3xl font-bold mt-1">{{ total_plans }}</p>
+                <p class="text-orange-100 text-sm mt-0.5">Generated</p>
+            </div>
+            <span class="text-3xl opacity-80">🍽️</span>
+        </div>
+    </div>
+</div>
+
+<!-- Main Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Left Column (spans 2) -->
+    <div class="lg:col-span-2 space-y-6">
+
+        <!-- Latest Diet Plan Preview -->
+        <div class="card">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-gray-800 dark:text-white">🍽️ Today's Diet Plan</h2>
+                <a href="/diet-plan" class="text-sm text-green-600 dark:text-green-400 font-medium hover:underline">
+                    {% if latest_plan %}View Full Plan{% else %}Generate Plan{% endif %} →
+                </a>
+            </div>
+
+            {% if latest_plan %}
+            <div class="space-y-3">
+                {% set meals = [('☀️ Breakfast', latest_plan.breakfast), ('🌤️ Lunch', latest_plan.lunch), ('🍎 Snacks', latest_plan.snacks), ('🌙 Dinner', latest_plan.dinner)] %}
+                {% for label, items in meals %}
+                <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                    <span class="text-base shrink-0">{{ label.split()[0] }}</span>
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{{ label.split()[1] }}</p>
+                        <p class="text-sm text-gray-700 dark:text-gray-300 truncate">
+                            {% for item in items %}{{ item.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                        </p>
+                    </div>
+                    <span class="ml-auto text-xs text-gray-400 shrink-0">
+                        {{ items | sum(attribute='calories') }} kcal
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-10">
+                <div class="text-6xl mb-3">🍴</div>
+                <p class="text-gray-500 dark:text-gray-400 mb-4">No diet plan generated yet.</p>
+                <a href="/diet-plan" class="btn-primary">✨ Generate AI Diet Plan</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Weekly Progress Chart -->
+        <div class="card">
+            <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">📈 This Week's Progress</h2>
+            {% if week_logs %}
+            <div class="grid grid-cols-2 gap-4">
+                <canvas id="waterChart" height="120"></canvas>
+                <canvas id="moodChart" height="120"></canvas>
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-gray-400">
+                <div class="text-4xl mb-2">📊</div>
+                <p class="text-sm">Start logging your daily progress to see charts here.</p>
+                <a href="/tracker" class="btn-primary mt-4 text-sm">Start Tracking</a>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <!-- Right Column -->
+    <div class="space-y-6">
+
+        <!-- Today's Quick Log -->
+        <div class="card">
+            <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">📋 Today's Log</h2>
+            {% if today_log %}
+            <div class="space-y-3">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">💧 Water</span>
+                    <span class="text-sm font-semibold text-gray-800 dark:text-white">{{ (today_log.water_ml / 1000)|round(1) }}L</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">🏃 Exercise</span>
+                    <span class="text-sm font-semibold text-gray-800 dark:text-white">{{ today_log.exercise_min }} min</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">😴 Sleep</span>
+                    <span class="text-sm font-semibold text-gray-800 dark:text-white">{{ today_log.sleep_hours }} hrs</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">😊 Mood</span>
+                    <span class="text-xl">{{ ['😢','😕','😐','😊','😄'][today_log.mood - 1] }}</span>
+                </div>
+            </div>
+            <a href="/tracker" class="btn-secondary w-full justify-center text-sm mt-3">Update Log</a>
+            {% else %}
+            <div class="text-center py-6">
+                <p class="text-gray-400 text-sm mb-3">Nothing logged today yet.</p>
+                <a href="/tracker" class="btn-primary text-sm">📝 Log Today</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Badges -->
+        <div class="card">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-gray-800 dark:text-white">🏅 Badges</h2>
+                <span class="text-xs text-gray-400">{{ badges|length }} earned</span>
+            </div>
+            {% if badges %}
+            <div class="grid grid-cols-3 gap-2">
+                {% for badge in badges[:6] %}
+                <div class="badge-card badge-earned animate-bounce-in" title="{{ badge.badge_name }}">
+                    <span class="text-2xl">{{ badge.badge_emoji }}</span>
+                    <span class="text-xs mt-1 font-medium text-gray-700 dark:text-gray-300 leading-tight">{{ badge.badge_name.split()[0] }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <p class="text-4xl mb-2">🏆</p>
+                <p class="text-xs text-gray-400">Complete activities to earn badges!</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <h2 class="text-base font-bold text-gray-800 dark:text-white mb-3">⚡ Quick Actions</h2>
+            <div class="space-y-2">
+                <a href="/diet-plan" class="flex items-center gap-2 p-2.5 rounded-xl bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors text-sm text-green-700 dark:text-green-400 font-medium">
+                    🍽️ Generate New Plan
+                </a>
+                <a href="/tracker" class="flex items-center gap-2 p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-sm text-blue-700 dark:text-blue-400 font-medium">
+                    📊 Log Today's Progress
+                </a>
+                <a href="/chatbot" class="flex items-center gap-2 p-2.5 rounded-xl bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors text-sm text-purple-700 dark:text-purple-400 font-medium">
+                    🤖 Ask AI Chatbot
+                </a>
+                <a href="/progress" class="flex items-center gap-2 p-2.5 rounded-xl bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors text-sm text-orange-700 dark:text-orange-400 font-medium">
+                    📈 View Progress Charts
+                </a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% if week_logs %}
+const weekLogs = {{ week_logs | tojson }};
+const labels = weekLogs.map(l => {
+    const d = new Date(l.log_date);
+    return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric' });
+});
+const isDark = document.documentElement.classList.contains('dark');
+const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
+const labelColor = isDark ? '#9ca3af' : '#6b7280';
+
+// Water Chart
+new Chart(document.getElementById('waterChart'), {
+    type: 'bar',
+    data: {
+        labels,
+        datasets: [{
+            label: 'Water (ml)',
+            data: weekLogs.map(l => l.water_ml),
+            backgroundColor: 'rgba(59, 130, 246, 0.7)',
+            borderRadius: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false }, title: { display: true, text: '💧 Water Intake', color: labelColor } },
+        scales: {
+            y: { grid: { color: gridColor }, ticks: { color: labelColor } },
+            x: { grid: { display: false }, ticks: { color: labelColor } }
+        }
+    }
+});
+
+// Mood Chart
+new Chart(document.getElementById('moodChart'), {
+    type: 'line',
+    data: {
+        labels,
+        datasets: [{
+            label: 'Mood',
+            data: weekLogs.map(l => l.mood),
+            borderColor: '#a855f7',
+            backgroundColor: 'rgba(168, 85, 247, 0.15)',
+            tension: 0.4,
+            fill: true,
+            pointBackgroundColor: '#a855f7',
+            pointRadius: 4
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false }, title: { display: true, text: '😊 Mood Trend', color: labelColor } },
+        scales: {
+            y: { min: 1, max: 5, grid: { color: gridColor }, ticks: { color: labelColor } },
+            x: { grid: { display: false }, ticks: { color: labelColor } }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

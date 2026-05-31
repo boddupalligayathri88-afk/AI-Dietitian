@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}AI Chat – AI Dietitian{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto flex flex-col" style="height: calc(100vh - 9rem);">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-4">
+        <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+            <span class="text-2xl">🤖</span>
+        </div>
+        <div>
+            <h1 class="text-xl font-bold text-gray-800 dark:text-white">NutriBot</h1>
+            <p class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full {{ 'bg-green-400' if has_api_key else 'bg-yellow-400' }}"></span>
+                {{ 'AI Ready' if has_api_key else 'Add GROQ_API_KEY to enable AI' }}
+            </p>
+        </div>
+        <button onclick="clearHistory()" class="ml-auto text-xs text-gray-400 hover:text-red-400 transition-colors">
+            🗑️ Clear
+        </button>
+    </div>
+
+    {% if not has_api_key %}
+    <div class="card border-l-4 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 mb-4 text-sm">
+        <strong>⚠️ Groq API Key not configured.</strong>
+        Add <code class="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">GROQ_API_KEY</code> as an environment secret to enable the AI chatbot.
+        Get a free key at <a href="https://console.groq.com" target="_blank" class="underline text-yellow-800 dark:text-yellow-300">console.groq.com</a>.
+    </div>
+    {% endif %}
+
+    <!-- Chat Messages -->
+    <div id="chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-3 py-2 mb-4 pr-1">
+
+        <!-- Welcome Message -->
+        <div class="flex items-start gap-2">
+            <span class="text-2xl">🤖</span>
+            <div class="chat-bubble-bot">
+                <strong>Hello! I'm NutriBot 🥗</strong><br>
+                I'm your personal AI dietitian specializing in Indian cuisine. Ask me anything about nutrition, diet, healthy recipes, or your health goals!
+            </div>
+        </div>
+
+        <!-- Conversation History -->
+        {% for msg in history %}
+        {% if msg.role == 'user' %}
+        <div class="flex items-end gap-2 flex-row-reverse">
+            <span class="text-xl">👤</span>
+            <div class="chat-bubble-user">{{ msg.message }}</div>
+        </div>
+        {% else %}
+        <div class="flex items-start gap-2">
+            <span class="text-2xl">🤖</span>
+            <div class="chat-bubble-bot">{{ msg.message }}</div>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <!-- Typing Indicator (hidden by default) -->
+        <div id="typing-indicator" class="hidden flex items-start gap-2">
+            <span class="text-2xl">🤖</span>
+            <div class="chat-bubble-bot">
+                <span class="typing-dots">
+                    <span>•</span><span>•</span><span>•</span>
+                </span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Suggested Questions -->
+    <div class="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide" id="suggestions">
+        {% set suggestions = [
+            '🥗 What should I eat for weight loss?',
+            '🍚 Best Indian breakfast options?',
+            '💧 How much water should I drink?',
+            '🥗 Protein sources for vegetarians?',
+            '🍋 Foods for better immunity?'
+        ] %}
+        {% for s in suggestions %}
+        <button onclick="sendSuggestion(this)" 
+                class="shrink-0 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1.5 rounded-full hover:bg-green-100 dark:hover:bg-green-900/30 hover:text-green-700 dark:hover:text-green-400 transition-colors whitespace-nowrap">
+            {{ s }}
+        </button>
+        {% endfor %}
+    </div>
+
+    <!-- Input Area -->
+    <div class="flex gap-2">
+        <input type="text" id="chat-input" class="form-input flex-1"
+               placeholder="Ask me about diet, nutrition, healthy eating..."
+               autocomplete="off">
+        <button onclick="sendMessage()" id="send-btn" class="btn-primary px-4 py-2 shrink-0">
+            <span id="send-icon">Send ➤</span>
+        </button>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.typing-dots span {
+    animation: typingBounce 1.2s infinite;
+    display: inline-block;
+    font-size: 1.5rem;
+    line-height: 1;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingBounce {
+    0%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-6px); }
+}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+</style>
+
+<script>
+const chatMessages = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+
+function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+scrollToBottom();
+
+function sendSuggestion(btn) {
+    chatInput.value = btn.textContent.trim().replace(/^[^\w]+/, '');
+    sendMessage();
+}
+
+async function sendMessage() {
+    const msg = chatInput.value.trim();
+    if (!msg) return;
+
+    // Add user message to UI
+    appendMessage('user', msg);
+    chatInput.value = '';
+
+    // Show typing indicator
+    document.getElementById('typing-indicator').classList.remove('hidden');
+    scrollToBottom();
+
+    // Disable send button
+    const sendBtn = document.getElementById('send-btn');
+    sendBtn.disabled = true;
+    document.getElementById('send-icon').textContent = '⏳';
+
+    try {
+        const res = await fetch('/chatbot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: msg })
+        });
+        const data = await res.json();
+
+        document.getElementById('typing-indicator').classList.add('hidden');
+
+        if (data.response) {
+            appendMessage('assistant', data.response);
+        } else {
+            appendMessage('assistant', 'Sorry, I could not process that. Please try again.');
+        }
+    } catch (err) {
+        document.getElementById('typing-indicator').classList.add('hidden');
+        appendMessage('assistant', 'Connection error. Please try again.');
+    }
+
+    sendBtn.disabled = false;
+    document.getElementById('send-icon').textContent = 'Send ➤';
+    scrollToBottom();
+}
+
+function appendMessage(role, text) {
+    const el = document.createElement('div');
+    if (role === 'user') {
+        el.className = 'flex items-end gap-2 flex-row-reverse';
+        el.innerHTML = `<span class="text-xl">👤</span><div class="chat-bubble-user">${escapeHtml(text)}</div>`;
+    } else {
+        el.className = 'flex items-start gap-2';
+        el.innerHTML = `<span class="text-2xl">🤖</span><div class="chat-bubble-bot">${escapeHtml(text).replace(/\n/g, '<br>')}</div>`;
+    }
+    // Insert before typing indicator
+    const typingEl = document.getElementById('typing-indicator');
+    chatMessages.insertBefore(el, typingEl);
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+              .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+function clearHistory() {
+    if (!confirm('Clear chat history?')) return;
+    // Remove all messages except welcome message and typing indicator
+    const msgs = chatMessages.querySelectorAll('.chat-bubble-user, .chat-bubble-bot');
+    msgs.forEach(m => m.closest('div.flex')?.remove());
+}
+
+// Enter key to send
+chatInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+</script>
+{% endblock %}

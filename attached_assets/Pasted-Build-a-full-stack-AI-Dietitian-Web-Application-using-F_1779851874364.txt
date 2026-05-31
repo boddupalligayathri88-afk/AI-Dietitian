@@ -1,0 +1,175 @@
+Build a full-stack AI Dietitian Web Application using:
+
+Frontend:
+
+* HTML
+* Tailwind CSS
+* Chart.js
+* Responsive modern UI with gradients, cards, animations, dark mode, and mobile-friendly layout
+
+Backend:
+
+* Python + FastAPI
+
+Database:
+
+* SQLite3
+
+Project Requirements:
+
+1. Authentication System
+
+* User registration and login
+* Session handling
+* Store user credentials securely
+
+2. User Health Profile
+   Create a form to collect:
+
+* Name
+* Age
+* Gender
+* Height
+* Weight
+* Diseases
+* Food preferences
+* Allergies
+* Budget
+* Fitness goals
+* Activity level
+* Sleep hours
+* Water intake habits
+
+Store all data in SQLite database.
+
+3. Dashboard
+   Create a modern responsive dashboard with:
+
+* BMI card
+* Daily calorie card
+* AI diet plan section
+* Progress charts
+* Water intake tracker
+* Exercise tracker
+* Mood tracker
+* Health score
+* Achievement badges
+
+Use Tailwind cards, gradients, shadows, and Chart.js visualizations.
+
+4. BMI & Health Analysis
+   Automatically calculate:
+
+* BMI
+* BMI category
+* BMR
+* Daily calorie needs
+
+Display categories:
+
+* Underweight
+* Normal
+* Overweight
+* Obese
+
+5. AI Diet Plan Generator
+   Use Groq Cloud API key integration (do NOT build custom ML model).
+
+Generate personalized Indian diet plans based on:
+
+* Diseases
+* Goals
+* Budget
+* Region
+* Food preference
+
+Include:
+
+* Breakfast
+* Lunch
+* Snacks
+* Dinner
+* Water recommendation
+
+Diseases to support:
+
+* Diabetes
+* Hypertension
+* Thyroid
+* Obesity
+
+6. Daily Progress Tracker
+   Allow users to log:
+
+* Meals
+* Water intake
+* Exercise
+* Sleep
+* Mood
+
+Store logs in SQLite and visualize progress using charts and progress bars.
+
+7. Badge & Gamification System
+   Create badges such as:
+
+* First Plan Generated
+* 7 Days Consistency
+* Hydration Hero
+* Healthy Streak
+
+Display badges visually on dashboard.
+
+8. Smart Features
+   Add:
+
+* AI chatbot for diet questions
+* AI health report generation
+* Budget-based diet planning
+* Regional Indian diet suggestions
+* Smart reminders
+* Dark mode
+* Mobile responsive design
+
+9. Backend API Endpoints
+   Create modular FastAPI endpoints:
+
+* /register
+* /login
+* /profile
+* /bmi
+* /diet-plan
+* /progress
+* /badges
+* /chatbot
+
+10. Database Tables
+    Create SQLite tables:
+
+* users
+* health_data
+* diet_plans
+* progress_logs
+* badges
+* chatbot_history
+
+11. Project Structure
+    Keep code modular and production-style:
+
+* frontend/
+* backend/
+* database/
+* static/
+* templates/
+* api/
+* models/
+
+12. Additional Requirements
+
+* Well-commented code for final-year project presentation
+* Clean folder structure
+* Error handling
+* Responsive UI
+* Attractive modern design
+* Beginner-friendly code explanations
+* Use environment variables for API keys
+* Include setup instructions and requirements.txt

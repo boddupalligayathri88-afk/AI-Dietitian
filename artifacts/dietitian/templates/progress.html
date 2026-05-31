@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}Progress – AI Dietitian{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">📈 Progress Charts</h1>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Your health trends over the last 30 days</p>
+        </div>
+        <button onclick="loadHealthReport()" class="btn-secondary text-sm">
+            🤖 Generate AI Health Report
+        </button>
+    </div>
+
+    <!-- AI Health Report (hidden until loaded) -->
+    <div id="health-report-card" class="card border-l-4 border-green-400 bg-green-50 dark:bg-green-900/20 mb-6 hidden">
+        <div class="flex items-start gap-3">
+            <span class="text-2xl">🤖</span>
+            <div>
+                <h3 class="font-bold text-green-800 dark:text-green-300 mb-1">Your Weekly AI Health Report</h3>
+                <p id="health-report-text" class="text-sm text-green-700 dark:text-green-400 whitespace-pre-line"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Summary Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6" id="summary-cards">
+        <div class="card text-center">
+            <p class="text-3xl font-bold text-blue-500" id="avg-water">–</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Avg Water/Day</p>
+        </div>
+        <div class="card text-center">
+            <p class="text-3xl font-bold text-orange-500" id="avg-exercise">–</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Avg Exercise/Day</p>
+        </div>
+        <div class="card text-center">
+            <p class="text-3xl font-bold text-indigo-500" id="avg-sleep">–</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Avg Sleep/Day</p>
+        </div>
+        <div class="card text-center">
+            <p class="text-3xl font-bold text-purple-500" id="days-logged">–</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Days Logged</p>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="card">
+            <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-4">💧 Water Intake (ml/day)</h3>
+            <canvas id="waterChart" height="200"></canvas>
+        </div>
+        <div class="card">
+            <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-4">🏃 Exercise (min/day)</h3>
+            <canvas id="exerciseChart" height="200"></canvas>
+        </div>
+        <div class="card">
+            <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-4">😴 Sleep (hours/night)</h3>
+            <canvas id="sleepChart" height="200"></canvas>
+        </div>
+        <div class="card">
+            <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-4">😊 Mood Trend (1–5)</h3>
+            <canvas id="moodChart" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- No Data State -->
+    <div id="no-data" class="card text-center py-12 hidden">
+        <div class="text-6xl mb-4">📊</div>
+        <h2 class="text-xl font-bold text-gray-600 dark:text-gray-400 mb-2">No Data Yet</h2>
+        <p class="text-gray-400 mb-4">Start logging your daily progress to see charts here.</p>
+        <a href="/tracker" class="btn-primary">📝 Start Tracking Today</a>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const isDark = document.documentElement.classList.contains('dark');
+const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)';
+const textColor = isDark ? '#9ca3af' : '#6b7280';
+
+function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+}
+
+// Load progress data from the API
+fetch('/progress/charts')
+    .then(r => r.json())
+    .then(data => {
+        const logs = data.logs || [];
+        const weekly = data.weekly_averages || {};
+
+        if (logs.length === 0) {
+            document.getElementById('no-data').classList.remove('hidden');
+            document.getElementById('summary-cards').classList.add('opacity-40');
+            return;
+        }
+
+        // Update summary cards
+        if (weekly.avg_water) document.getElementById('avg-water').textContent = Math.round(weekly.avg_water / 1000 * 10) / 10 + 'L';
+        if (weekly.avg_exercise) document.getElementById('avg-exercise').textContent = Math.round(weekly.avg_exercise) + 'm';
+        if (weekly.avg_sleep) document.getElementById('avg-sleep').textContent = Math.round(weekly.avg_sleep * 10) / 10 + 'h';
+        if (weekly.days_logged) document.getElementById('days-logged').textContent = weekly.days_logged;
+
+        const labels = logs.map(l => formatDate(l.log_date));
+        const baseOpts = {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { grid: { color: gridColor }, ticks: { color: textColor } },
+                x: { grid: { display: false }, ticks: { color: textColor, maxRotation: 45 } }
+            }
+        };
+
+        // Water Chart
+        new Chart(document.getElementById('waterChart'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    data: logs.map(l => l.water_ml),
+                    backgroundColor: logs.map(l => l.water_ml >= 2000 ? '#3b82f6' : '#93c5fd'),
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                ...baseOpts,
+                scales: {
+                    ...baseOpts.scales,
+                    y: { ...baseOpts.scales.y, title: { display: true, text: 'ml', color: textColor } }
+                }
+            }
+        });
+
+        // Exercise Chart
+        new Chart(document.getElementById('exerciseChart'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    data: logs.map(l => l.exercise_min),
+                    backgroundColor: logs.map(l => l.exercise_min >= 30 ? '#f97316' : '#fdba74'),
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                ...baseOpts,
+                scales: {
+                    ...baseOpts.scales,
+                    y: { ...baseOpts.scales.y, title: { display: true, text: 'minutes', color: textColor } }
+                }
+            }
+        });
+
+        // Sleep Chart
+        new Chart(document.getElementById('sleepChart'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    data: logs.map(l => l.sleep_hours),
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#6366f1',
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                ...baseOpts,
+                scales: {
+                    ...baseOpts.scales,
+                    y: { ...baseOpts.scales.y, min: 0, max: 12,
+                         title: { display: true, text: 'hours', color: textColor } }
+                }
+            }
+        });
+
+        // Mood Chart
+        new Chart(document.getElementById('moodChart'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    data: logs.map(l => l.mood),
+                    borderColor: '#a855f7',
+                    backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#a855f7',
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                ...baseOpts,
+                scales: {
+                    ...baseOpts.scales,
+                    y: { ...baseOpts.scales.y, min: 1, max: 5,
+                         title: { display: true, text: 'mood (1-5)', color: textColor },
+                         ticks: {
+                             ...baseOpts.scales.y.ticks,
+                             callback: v => ['','😢','😕','😐','😊','😄'][v] || v
+                         }
+                    }
+                }
+            }
+        });
+    })
+    .catch(err => console.error('Failed to load progress:', err));
+
+// AI Health Report
+function loadHealthReport() {
+    const card = document.getElementById('health-report-card');
+    const text = document.getElementById('health-report-text');
+    text.textContent = '⏳ Generating your personalized health report...';
+    card.classList.remove('hidden');
+
+    fetch('/health-report')
+        .then(r => r.json())
+        .then(data => {
+            text.textContent = data.report || 'Unable to generate report.';
+        })
+        .catch(() => {
+            text.textContent = 'Failed to load report. Please try again.';
+        });
+}
+</script>
+{% endblock %}
